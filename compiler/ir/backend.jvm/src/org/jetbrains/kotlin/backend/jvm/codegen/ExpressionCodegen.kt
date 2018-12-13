@@ -1053,7 +1053,7 @@ class ExpressionCodegen(
         } else {
             val classType = classReference.classType
             if (classType is CrIrType) {
-                putJavaLangClassInstance(mv, classType.type)
+                putJavaLangClassInstance(mv, classType.type, null, state)
                 return
             } else {
                 val type = classType.toKotlinType()
@@ -1062,7 +1062,7 @@ class ExpressionCodegen(
                     putReifiedOperationMarkerIfTypeIsReifiedParameter(type, ReifiedTypeInliner.OperationKind.JAVA_CLASS, mv, this)
                 }
 
-                putJavaLangClassInstance(mv, typeMapper.mapType(type))
+                putJavaLangClassInstance(mv, typeMapper.mapType(type), type, state)
             }
         }
 
