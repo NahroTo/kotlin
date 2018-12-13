@@ -796,5 +796,59 @@ allprojects {
             logger.info("Redirecting repositories for $displayName")
             repositories.redirect()
         }
+
+        if (plugins.hasPlugin("org.gradle.java")) {
+            val instrumentator by configurations.creating
+            dependencies {
+                instrumentator(intellijDep()) { includeJars("javac2", "jdom", "asm-all", rootProject = rootProject) }
+            }
+
+            tasks.withType<JavaCompile> {
+                doLast {
+                    instrumentNotNull()
+                }
+            }
+        }
+    }
+}
+
+val LOADER_REF = "java2.loader"
+val FILTER_ANNOTATION_REGEXP_CLASS = "com.intellij.ant.ClassFilterAnnotationRegexp"
+
+fun JavaCompile.instrumentNotNull() {
+    ant.withGroovyBuilder {
+        "taskdef"("name" to "instrumentIdeaExtensions",
+                  "classpath" to project.configurations["instrumentator"].asPath,
+                  "loaderref" to LOADER_REF,
+                  "classname" to "com.intellij.ant.InstrumentIdeaExtensions")
+    }
+
+    ant.withGroovyBuilder {
+        "typedef"("name"  to "skip",
+                  "classpath" to classpath,
+                  "loaderref" to LOADER_REF,
+                  "classname" to FILTER_ANNOTATION_REGEXP_CLASS)
+    }
+
+    ant.withGroovyBuilder {
+        val sourceSet = project.sourceSets.single { it.compileJavaTaskName == name }
+        val dependencySourceSetDirectories = project.configurations[sourceSet.compileConfigurationName]
+            .dependencies
+            .withType(ProjectDependency::class.java)
+            .mapNotNull { p -> p.dependencyProject.takeIf { it.plugins.hasPlugin("org.gradle.java-base") } }
+            .map { p -> p.mainSourceSet.allSource.sourceDirectories }
+
+        val instrumentationClasspath = dependencySourceSetDirectories.fold(classpath) { acc, v -> acc + v }.asPath
+        sourceSet.allJava.sourceDirectories.filter { it.exists() }.forEach {
+            "instrumentIdeaExtensions"(
+                "srcdir" to it,
+                "destdir" to destinationDir,
+                "classpath" to instrumentationClasspath,
+                "includeantruntime" to false,
+                "instrumentNotNull" to true
+            ) {
+                "skip"("pattern" to "kotlin/Metadata")
+            }
+        }
     }
 }
