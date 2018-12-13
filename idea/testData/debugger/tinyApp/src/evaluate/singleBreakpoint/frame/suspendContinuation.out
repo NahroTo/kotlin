@@ -1,0 +1,26 @@
+LineBreakpoint created at suspendContinuation.kt:7
+Run Java
+Connected to the target VM
+suspendContinuation.kt:7
+Compile bytecode for a
+package suspendContinuation
+
+suspend fun main() {
+    val a = 5
+    foo()
+    //Breakpoint!
+    val b = 4
+}
+
+suspend fun foo() {}
+
+// PRINT_FRAME
+// SHOW_KOTLIN_VARIABLES
+
+// EXPRESSION: a
+// RESULT: 5: I
+ frame    = main:7, SuspendContinuationKt {suspendContinuation}
+   local    = a: int = 5 (sp = suspendContinuation.kt, 4)
+Disconnected from the target VM
+
+Process finished with exit code 0
