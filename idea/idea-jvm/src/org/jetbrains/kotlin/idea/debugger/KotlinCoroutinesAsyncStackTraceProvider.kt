@@ -19,17 +19,13 @@ import com.intellij.debugger.ui.impl.watch.ValueDescriptorImpl
 import com.intellij.xdebugger.frame.XNamedValue
 import com.sun.jdi.*
 import org.jetbrains.kotlin.idea.debugger.evaluate.LOG
+import org.jetbrains.kotlin.idea.debugger.evaluate.VariableFinder.Companion.SUSPEND_LAMBDA_CLASSES
 import org.jetbrains.kotlin.idea.debugger.evaluate.getInvokePolicy
 import org.jetbrains.kotlin.utils.addToStdlib.firstIsInstanceOrNull
 
 class KotlinCoroutinesAsyncStackTraceProvider : AsyncStackTraceProvider {
     private companion object {
         const val DEBUG_METADATA_KT = "kotlin.coroutines.jvm.internal.DebugMetadataKt"
-
-        val SUSPEND_LAMBDA_CLASSES = listOf(
-            "kotlin.coroutines.jvm.internal.SuspendLambda",
-            "kotlin.coroutines.jvm.internal.RestrictedSuspendLambda"
-        )
 
         fun classByName(name: String, frameProxy: StackFrameProxyImpl, suspendContext: SuspendContextImpl): ReferenceType? {
             val virtualMachine = frameProxy.virtualMachine
@@ -137,7 +133,7 @@ class KotlinCoroutinesAsyncStackTraceProvider : AsyncStackTraceProvider {
                 "(Lkotlin/coroutines/jvm/internal/BaseContinuationImpl;)Ljava/lang/StackTraceElement;"
             ).firstOrNull() ?: return null
 
-            val threadReference = frameProxy.threadProxy().threadReference
+            val threadReference = frameProxy.threadProxy().threadReference.takeIf { it.isSuspended } ?: return null
             val args = listOf(continuation)
             val invokePolicy = suspendContext.getInvokePolicy()
 
@@ -166,7 +162,7 @@ class KotlinCoroutinesAsyncStackTraceProvider : AsyncStackTraceProvider {
                 "(Lkotlin/coroutines/jvm/internal/BaseContinuationImpl;)[Ljava/lang/String;"
             ).firstOrNull() ?: return null
 
-            val threadReference = frameProxy.threadProxy().threadReference
+            val threadReference = frameProxy.threadProxy().threadReference.takeIf { it.isSuspended } ?: return null
             val args = listOf(continuation)
             val invokePolicy = suspendContext.getInvokePolicy()
 
